@@ -4,7 +4,7 @@ interface MarkdownRendererProps {
   content: string
 }
 
-export function MarkdownRenderer({ content }: MarkdownRendererProps) {
+export function MarkdownRenderer({ content }: Readonly<MarkdownRendererProps>) {
   return (
     <ReactMarkdown
       components={{
@@ -28,7 +28,7 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
         ),
         p: ({ ...props }) => (
           <p
-            className='text-sm text-gray-800 leading-relaxed mb-2 whitespace-pre-wrap'
+            className='text-sm text-gray-800 leading-relaxed mb-0 whitespace-pre-wrap'
             {...props}
           />
         ),

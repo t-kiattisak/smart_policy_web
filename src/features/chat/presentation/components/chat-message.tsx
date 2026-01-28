@@ -13,7 +13,7 @@ export function ChatMessage({
   content,
   type = "text",
   children,
-}: ChatMessageProps) {
+}: Readonly<ChatMessageProps>) {
   const isUser = role === "user"
 
   return (
@@ -103,7 +103,7 @@ export function ChatMessage({
                 </div>
               </>
             ) : (
-              <p className='leading-relaxed text-[15px]'>{content}</p>
+              <p className='leading-relaxed text-[15px] mb-0'>{content}</p>
             )}
           </div>
         )}

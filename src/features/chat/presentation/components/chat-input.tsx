@@ -2,6 +2,7 @@ import React from "react"
 import { Button } from "@/shared/components/button"
 import { MicIcon, PlusIcon, MousePointer2 } from "lucide-react"
 import { Input } from "@/shared/components/input"
+import { useSpeechRecognition } from "@/shared/hooks/use-speech-recognition"
 
 interface ChatInputProps {
   onFileUpload: (file: File) => void
@@ -16,6 +17,49 @@ export function ChatInput({
 }: Readonly<ChatInputProps>) {
   const [input, setInput] = React.useState("")
   const fileInputRef = React.useRef<HTMLInputElement>(null)
+  const finalTranscriptRef = React.useRef("")
+
+  const handleSpeechResult = React.useCallback(
+    (text: string) => {
+      finalTranscriptRef.current = text
+      setInput(text)
+      // Auto-send when speech recognition completes
+      if (text.trim() && onSendMessage && !disabled) {
+        setTimeout(() => {
+          onSendMessage(text)
+          setInput("")
+          finalTranscriptRef.current = ""
+        }, 300)
+      }
+    },
+    [onSendMessage, disabled],
+  )
+
+  const handleSpeechError = React.useCallback((error: string) => {
+    console.error("Speech recognition error:", error)
+    // You can show a toast notification here if needed
+  }, [])
+
+  const {
+    isListening,
+    transcript,
+    isSupported,
+    toggleListening,
+    stopListening,
+  } = useSpeechRecognition({
+    language: "th-TH",
+    continuous: false,
+    interimResults: true,
+    onResult: handleSpeechResult,
+    onError: handleSpeechError,
+  })
+
+  // Update input with interim transcript while listening
+  React.useEffect(() => {
+    if (isListening && transcript) {
+      setInput(transcript)
+    }
+  }, [isListening, transcript])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -27,8 +71,32 @@ export function ChatInput({
 
   const handleSend = () => {
     if (input.trim() && onSendMessage && !disabled) {
+      // Stop listening if active
+      if (isListening) {
+        stopListening()
+      }
       onSendMessage(input)
       setInput("")
+      finalTranscriptRef.current = ""
+    }
+  }
+
+  const handleMicClick = () => {
+    if (disabled || !isSupported) return
+    if (isListening) {
+      stopListening()
+      // If there's a final transcript, send it
+      if (finalTranscriptRef.current.trim() && onSendMessage) {
+        setTimeout(() => {
+          onSendMessage(finalTranscriptRef.current)
+          setInput("")
+          finalTranscriptRef.current = ""
+        }, 100)
+      }
+    } else {
+      setInput("")
+      finalTranscriptRef.current = ""
+      toggleListening()
     }
   }
 
@@ -90,12 +158,36 @@ export function ChatInput({
           </div>
 
           <div className='relative shrink-0'>
-            <span className='absolute inset-0 rounded-full bg-blue-500 animate-ping opacity-20'></span>
-            <span className='absolute inset-[-4px] rounded-full from-blue-400 to-cyan-300 opacity-40 blur-sm'></span>
+            {isListening && (
+              <>
+                <span className='absolute inset-0 rounded-full bg-red-500 animate-ping opacity-75'></span>
+                <span className='absolute inset-[-4px] rounded-full from-red-400 to-pink-300 opacity-60 blur-sm'></span>
+              </>
+            )}
+            {!isListening && (
+              <>
+                <span className='absolute inset-0 rounded-full bg-blue-500 animate-ping opacity-20'></span>
+                <span className='absolute inset-[-4px] rounded-full from-blue-400 to-cyan-300 opacity-40 blur-sm'></span>
+              </>
+            )}
 
             <Button
               size='icon-lg'
-              className='rounded-full from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg shadow-blue-500/30 border-2 border-white/20 relative z-10 w-12 h-12 md:w-14 md:h-14'
+              onClick={handleMicClick}
+              disabled={disabled || !isSupported}
+              className={`rounded-full relative z-10 w-12 h-12 md:w-14 md:h-14 text-white shadow-lg border-2 border-white/20 transition-all ${
+                isListening
+                  ? "from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 shadow-red-500/50"
+                  : "from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-blue-500/30"
+              }`}
+              title={(() => {
+                if (!isSupported) {
+                  return "Voice recognition not supported in this browser"
+                }
+                return isListening
+                  ? "Click to stop recording"
+                  : "Click to start voice input"
+              })()}
             >
               <MicIcon className='w-6 h-6 md:w-7 md:h-7' />
             </Button>

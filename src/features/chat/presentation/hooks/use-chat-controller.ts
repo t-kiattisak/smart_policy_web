@@ -12,8 +12,17 @@ export function useChatController() {
   const [messages, setMessages] = useState<MessageModel[]>([])
   const [policies, setPolicies] = useState<PolicyModel[]>([])
   const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const [assistantId, setAssistantId] = useState<string | null>(null)
   const [conversationId, setConversationId] = useState<string | null>(null)
+
+  // Get assistant ID on mount (persisted across refreshes)
+  const getAssistantId = useCallback(async () => {
+    try {
+      return await repository.getAssistantId()
+    } catch (error) {
+      console.error("Failed to get assistant ID:", error)
+      return null
+    }
+  }, [])
 
   const handleFileUpload = useCallback(async (file: File) => {
     setIsAnalyzing(true)
@@ -21,7 +30,7 @@ export function useChatController() {
     const userMsg: MessageModel = {
       id: Date.now().toString(),
       role: "user",
-      content: `Uploaded policy: ${file.name}`,
+      content: `อัปโหลดกรมธรรม์: ${file.name}`,
       createdAt: Date.now(),
     }
     setMessages((prev) => [...prev, userMsg])
@@ -30,8 +39,7 @@ export function useChatController() {
       console.log("Uploading & Preparing Vector Store...")
       const { vectorStoreId } = await repository.uploadPolicyFile(file)
 
-      const asstId = await repository.initializeAssistant(vectorStoreId)
-      setAssistantId(asstId)
+      await repository.initializeAssistant(vectorStoreId)
 
       console.log("Analyzing Policy with OCR...")
       const analysis = await policyAnalysisService.analyzePolicy(file)
@@ -71,7 +79,7 @@ export function useChatController() {
       const aiMsg: MessageModel = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: `**Analysis Result:**\n\n${analysis.summary}`,
+        content: `**ผลการวิเคราะห์:**\n\n${analysis.summary}`,
         createdAt: Date.now(),
       }
       setMessages((prev) => [...prev, aiMsg])
@@ -80,7 +88,7 @@ export function useChatController() {
       const errorMsg: MessageModel = {
         id: Date.now().toString(),
         role: "assistant",
-        content: "Sorry, I encountered an error analyzing the policy.",
+        content: "ขออภัย เกิดข้อผิดพลาดในการวิเคราะห์กรมธรรม์",
         createdAt: Date.now(),
       }
       setMessages((prev) => [...prev, errorMsg])
@@ -101,13 +109,15 @@ export function useChatController() {
       }
       setMessages((prev) => [...prev, userMsg])
 
+      // Get assistant ID (will be created if doesn't exist)
+      const assistantId = await getAssistantId()
       if (!assistantId) {
         setMessages((prev) => [
           ...prev,
           {
             id: Date.now().toString(),
             role: "assistant",
-            content: "Please upload a policy first to start the assistant.",
+            content: "กรุณาอัปโหลดกรมธรรม์ก่อนเพื่อเริ่มใช้งาน",
             createdAt: Date.now(),
           },
         ])
@@ -115,6 +125,7 @@ export function useChatController() {
       }
 
       try {
+        setIsAnalyzing(true)
         const { response, conversationId: updatedConvId } =
           await repository.sendMessage(
             text,
@@ -138,13 +149,15 @@ export function useChatController() {
           {
             id: Date.now().toString(),
             role: "assistant",
-            content: "Sorry, something went wrong.",
+            content: "ขออภัย เกิดข้อผิดพลาด",
             createdAt: Date.now(),
           },
         ])
+      } finally {
+        setIsAnalyzing(false)
       }
     },
-    [assistantId, conversationId],
+    [conversationId, getAssistantId],
   )
 
   return {
