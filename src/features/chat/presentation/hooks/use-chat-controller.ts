@@ -1,18 +1,72 @@
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { ChatRepositoryImpl } from "@/features/chat/data/repositories/chat.repository.impl"
 import { PolicyAnalysisServiceImpl } from "@/services/policy-analysis"
 import { Car, Shield, Home, FileText } from "lucide-react"
+import { useGeolocation } from "@/shared/hooks/use-geolocation"
 import type { MessageModel } from "@/features/chat/domain/models/message.model"
 import type { PolicyModel } from "@/features/chat/domain/models/policy.model"
 
 const repository = new ChatRepositoryImpl()
 const policyAnalysisService = new PolicyAnalysisServiceImpl()
 
+// Helper to reverse geocode coordinates to location name
+const reverseGeocode = async (
+  lat: number,
+  lng: number,
+): Promise<string | null> => {
+  try {
+    // Use OpenStreetMap Nominatim API (free, no API key needed)
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10&addressdetails=1`,
+      {
+        headers: {
+          "User-Agent": "SmartPolicyApp/1.0",
+        },
+      },
+    )
+    const data = await response.json()
+    if (data.address) {
+      // Try to get district or city name
+      return (
+        data.address.district ||
+        data.address.city ||
+        data.address.state ||
+        data.address.country ||
+        null
+      )
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
 export function useChatController() {
   const [messages, setMessages] = useState<MessageModel[]>([])
   const [policies, setPolicies] = useState<PolicyModel[]>([])
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [conversationId, setConversationId] = useState<string | null>(null)
+  const [userLocation, setUserLocation] = useState<string | null>(null)
+
+  const { position, getCurrentPosition, isSupported } = useGeolocation()
+
+  // Get user location on mount (once)
+  useEffect(() => {
+    if (isSupported && !userLocation) {
+      getCurrentPosition()
+    }
+  }, [isSupported, userLocation, getCurrentPosition])
+
+  // Reverse geocode when position is available
+  useEffect(() => {
+    if (position && !userLocation) {
+      reverseGeocode(position.latitude, position.longitude).then((location) => {
+        if (location) {
+          setUserLocation(location)
+        }
+      })
+    }
+  }, [position, userLocation])
 
   // Get assistant ID on mount (persisted across refreshes)
   const getAssistantId = useCallback(async () => {
@@ -100,6 +154,7 @@ export function useChatController() {
   const handleSendMessage = useCallback(
     async (text: string) => {
       if (!text.trim()) return
+      const messageWithContext = `${text}\n\n(ตำแหน่งปัจจุบัน: ${userLocation || "กรุงเทพ"})`
 
       const userMsg: MessageModel = {
         id: Date.now().toString(),
@@ -128,7 +183,7 @@ export function useChatController() {
         setIsAnalyzing(true)
         const { response, conversationId: updatedConvId } =
           await repository.sendMessage(
-            text,
+            messageWithContext,
             assistantId,
             conversationId || undefined,
           )
@@ -157,7 +212,7 @@ export function useChatController() {
         setIsAnalyzing(false)
       }
     },
-    [conversationId, getAssistantId],
+    [conversationId, getAssistantId, userLocation],
   )
 
   return {

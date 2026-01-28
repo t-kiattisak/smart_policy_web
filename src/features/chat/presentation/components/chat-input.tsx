@@ -1,6 +1,6 @@
 import React from "react"
 import { Button } from "@/shared/components/button"
-import { MicIcon, PlusIcon, MousePointer2 } from "lucide-react"
+import { MicIcon, MousePointer2, CloudUploadIcon } from "lucide-react"
 import { Input } from "@/shared/components/input"
 import { useSpeechRecognition } from "@/shared/hooks/use-speech-recognition"
 
@@ -128,7 +128,7 @@ export function ChatInput({
               onClick={() => fileInputRef.current?.click()}
               disabled={disabled}
             >
-              <PlusIcon className='w-5 h-5' />
+              <CloudUploadIcon className='w-5 h-5' />
             </Button>
           </div>
 

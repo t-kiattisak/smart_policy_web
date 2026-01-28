@@ -25,9 +25,9 @@ export function ChatMessage({
     >
       <div
         className={cn(
-          "flex gap-4 max-w-[85%] md:max-w-[70%]",
+          "flex gap-4 max-w-full md:max-w-[70%]",
           isUser && "bg-gray-200 border border-gray-300 rounded-lg p-2",
-          isUser ? "flex-row-reverse" : "flex-row",
+          isUser ? "flex-row-reverse" : "md:flex-row flex-col",
         )}
       >
         <div className='shrink-0 mt-auto'>

@@ -27,11 +27,30 @@ export class ChatRepositoryImpl implements ChatRepository {
     file: File,
   ): Promise<{ fileId: string; vectorStoreId: string }> {
     const uploaded = await uploadFile(file)
-    const vsName = `VS_${Date.now()}`
-    const vs = await createVectorStore(vsName)
-    await addFileToVectorStore(vs.id, uploaded.id)
 
-    return { fileId: uploaded.id, vectorStoreId: vs.id }
+    const assistantId = await this.getAssistantId()
+    let vectorStoreId: string
+
+    if (assistantId) {
+      const existingVectorStoreIds =
+        await this.getVectorStoreIdsFromAssistant(assistantId)
+      if (existingVectorStoreIds.length > 0) {
+        vectorStoreId = existingVectorStoreIds[0]
+        await addFileToVectorStore(vectorStoreId, uploaded.id)
+      } else {
+        const vsName = `VS_${Date.now()}`
+        const vs = await createVectorStore(vsName)
+        await addFileToVectorStore(vs.id, uploaded.id)
+        vectorStoreId = vs.id
+      }
+    } else {
+      const vsName = `VS_${Date.now()}`
+      const vs = await createVectorStore(vsName)
+      await addFileToVectorStore(vs.id, uploaded.id)
+      vectorStoreId = vs.id
+    }
+
+    return { fileId: uploaded.id, vectorStoreId }
   }
 
   async getAssistantId(): Promise<string | null> {
@@ -50,21 +69,20 @@ export class ChatRepositoryImpl implements ChatRepository {
     })
     const existing = myAssistants.data.find((a) => a.name === ASSISTANT_NAME)
 
+    // Azure OpenAI only supports 1 vector store per assistant
+    // Use the provided vectorStoreId or keep existing one
+    const targetVectorStoreId =
+      vectorStoreId ||
+      (existing
+        ? (await this.getVectorStoreIdsFromAssistant(existing.id))[0]
+        : undefined)
+
     if (existing) {
-      const existingVectorStoreIds = await this.getVectorStoreIdsFromAssistant(
-        existing.id,
-      )
-
-      const allVectorStoreIds = vectorStoreId
-        ? [...new Set([...existingVectorStoreIds, vectorStoreId])]
-        : existingVectorStoreIds
-
       await client.beta.assistants.update(existing.id, {
         instructions: CHAT_INSTRUCTIONS,
-        tool_resources:
-          allVectorStoreIds.length > 0
-            ? { file_search: { vector_store_ids: allVectorStoreIds } }
-            : undefined,
+        tool_resources: targetVectorStoreId
+          ? { file_search: { vector_store_ids: [targetVectorStoreId] } }
+          : undefined,
       })
       return existing.id
     }
@@ -74,8 +92,8 @@ export class ChatRepositoryImpl implements ChatRepository {
       instructions: CHAT_INSTRUCTIONS,
       model: DEPLOYMENT,
       tools: [{ type: "file_search" }],
-      tool_resources: vectorStoreId
-        ? { file_search: { vector_store_ids: [vectorStoreId] } }
+      tool_resources: targetVectorStoreId
+        ? { file_search: { vector_store_ids: [targetVectorStoreId] } }
         : undefined,
     })
     return assistant.id
