@@ -3,6 +3,7 @@ import { Button } from "@/shared/components/button"
 import { MicIcon, MousePointer2, CloudUploadIcon } from "lucide-react"
 import { Input } from "@/shared/components/input"
 import { useSpeechRecognition } from "@/shared/hooks/use-speech-recognition"
+import { cn } from "@/shared/lib/utils"
 
 interface ChatInputProps {
   onFileUpload: (file: File) => void
@@ -160,12 +161,6 @@ export function ChatInput({
           <div className='relative shrink-0'>
             {isListening && (
               <>
-                <span className='absolute inset-0 rounded-full bg-red-500 animate-ping opacity-75'></span>
-                <span className='absolute inset-[-4px] rounded-full from-red-400 to-pink-300 opacity-60 blur-sm'></span>
-              </>
-            )}
-            {!isListening && (
-              <>
                 <span className='absolute inset-0 rounded-full bg-blue-500 animate-ping opacity-20'></span>
                 <span className='absolute inset-[-4px] rounded-full from-blue-400 to-cyan-300 opacity-40 blur-sm'></span>
               </>
@@ -175,11 +170,11 @@ export function ChatInput({
               size='icon-lg'
               onClick={handleMicClick}
               disabled={disabled || !isSupported}
-              className={`rounded-full relative z-10 w-12 h-12 md:w-14 md:h-14 text-white shadow-lg border-2 border-white/20 transition-all ${
-                isListening
-                  ? "from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 shadow-red-500/50"
-                  : "from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-blue-500/30"
-              }`}
+              className={cn(
+                `rounded-full relative z-10 w-12 h-12 md:w-14 md:h-14 text-white shadow-lg border-2 border-white/20 transition-all`,
+                isListening &&
+                  "from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700",
+              )}
               title={(() => {
                 if (!isSupported) {
                   return "Voice recognition not supported in this browser"

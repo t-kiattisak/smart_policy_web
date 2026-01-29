@@ -134,6 +134,7 @@ export function useChatController() {
         id: (Date.now() + 1).toString(),
         role: "assistant",
         content: `**ผลการวิเคราะห์:**\n\n${analysis.summary}`,
+        policy: newPolicy,
         createdAt: Date.now(),
       }
       setMessages((prev) => [...prev, aiMsg])

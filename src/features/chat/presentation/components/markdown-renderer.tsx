@@ -28,7 +28,7 @@ export function MarkdownRenderer({ content }: Readonly<MarkdownRendererProps>) {
         ),
         p: ({ ...props }) => (
           <p
-            className='text-sm text-gray-800 leading-relaxed mb-0 whitespace-pre-wrap'
+            className='(text-sm text-gray-800 leading-relaxed mb-0 whitespace-pre-wrap'
             {...props}
           />
         ),
