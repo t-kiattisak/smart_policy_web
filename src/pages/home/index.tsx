@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/shared/components/dialog"
 import { Button } from "@/shared/components/button"
+import { CloudUploadIcon } from "lucide-react"
 import { useChatController } from "@/features/chat/presentation/hooks/use-chat-controller"
 import type { PolicyModel } from "@/features/chat/domain/models/policy.model"
 
@@ -26,6 +27,7 @@ export default function HomePage() {
   } = useChatController()
 
   const [selectedPolicy, setSelectedPolicy] = useState<PolicyModel | null>(null)
+  const triggerUploadRef = useRef<(() => void) | null>(null)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
@@ -53,6 +55,29 @@ export default function HomePage() {
             ref={messagesContainerRef}
             className='flex-1 overflow-y-auto space-y-4 px-2'
           >
+            {messages.length === 0 && policies.length === 0 && !isAnalyzing && (
+              <div className='flex flex-col items-center justify-center min-h-[200px] text-center px-4'>
+                <p className='text-muted-foreground text-base mb-2'>
+                  ยินดีต้อนรับสู่ Smart Policy
+                </p>
+                <p className='text-muted-foreground text-sm mb-4 max-w-sm'>
+                  อัปโหลดกรมธรรม์ประกันภัย (PDF) ก่อน เพื่อให้ AI
+                  ช่วยตรวจสอบความคุ้มครองและตอบคำถามได้
+                </p>
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={() => triggerUploadRef.current?.()}
+                  className='gap-2'
+                >
+                  <CloudUploadIcon className='w-4 h-4' />
+                  อัปโหลดกรมธรรม์ (PDF)
+                </Button>
+                <p className='text-xs text-muted-foreground mt-3'>
+                  หรือกดปุ่มอัปโหลดด้านล่าง
+                </p>
+              </div>
+            )}
             {messages.map((m) => (
               <div key={m.id} className='space-y-3'>
                 {m.policy && (
@@ -87,6 +112,7 @@ export default function HomePage() {
           disabled={isAnalyzing}
           onFileUpload={handleFileUpload}
           onSendMessage={handleSendMessage}
+          uploadTriggerRef={triggerUploadRef}
         />
       </div>
 

@@ -155,7 +155,13 @@ export function useChatController() {
   const handleSendMessage = useCallback(
     async (text: string) => {
       if (!text.trim()) return
-      const messageWithContext = `${text}\n\n(ตำแหน่งปัจจุบัน: ${userLocation || "กรุงเทพ"})`
+
+      const policyInfo =
+        policies.length > 0
+          ? `\n\n**กรมธรรม์ที่มีอยู่:**\n${policies.map((p) => `- **${p.name}** (เลขที่: ${p.number})`).join("\n")}`
+          : ""
+
+      const messageWithContext = `${text}${policyInfo}`
 
       const userMsg: MessageModel = {
         id: Date.now().toString(),
@@ -186,7 +192,7 @@ export function useChatController() {
           await repository.sendMessage(
             messageWithContext,
             assistantId,
-            conversationId || undefined,
+            conversationId ?? undefined,
           )
 
         if (updatedConvId) setConversationId(updatedConvId)
@@ -213,7 +219,7 @@ export function useChatController() {
         setIsAnalyzing(false)
       }
     },
-    [conversationId, getAssistantId, userLocation],
+    [conversationId, getAssistantId, policies],
   )
 
   return {

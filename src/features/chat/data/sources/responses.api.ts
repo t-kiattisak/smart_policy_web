@@ -1,5 +1,6 @@
 import { client } from "@/shared/lib/openai"
 import type { Tool } from "openai/resources/responses/responses.mjs"
+import { CHAT_INSTRUCTIONS } from "@/features/chat/domain/prompts"
 
 const pollResponse = async (responseId: string) => {
   let response = await client.responses.retrieve(responseId)
@@ -31,7 +32,7 @@ export const generateAssistantResponse = async (
   const response = await client.responses.create({
     model: assistant.model,
     input: input,
-    instructions: assistant.instructions,
+    instructions: CHAT_INSTRUCTIONS,
     tools: tools,
     conversation: conversationId,
   })

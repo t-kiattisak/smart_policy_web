@@ -9,16 +9,28 @@ interface ChatInputProps {
   onFileUpload: (file: File) => void
   onSendMessage?: (text: string) => void
   disabled?: boolean
+  /** Ref to trigger file upload from outside (e.g. empty state button) */
+  uploadTriggerRef?: { current: (() => void) | null }
 }
 
 export function ChatInput({
   onFileUpload,
   onSendMessage,
   disabled,
+  uploadTriggerRef,
 }: Readonly<ChatInputProps>) {
   const [input, setInput] = React.useState("")
   const fileInputRef = React.useRef<HTMLInputElement>(null)
   const finalTranscriptRef = React.useRef("")
+
+  React.useEffect(() => {
+    if (uploadTriggerRef) {
+      uploadTriggerRef.current = () => fileInputRef.current?.click()
+    }
+    return () => {
+      if (uploadTriggerRef) uploadTriggerRef.current = null
+    }
+  }, [uploadTriggerRef])
 
   const handleSpeechResult = React.useCallback(
     (text: string) => {

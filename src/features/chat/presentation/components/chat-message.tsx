@@ -1,5 +1,8 @@
 import { Avatar } from "@/shared/components/avatar"
 import { cn } from "@/shared/lib/utils"
+import { useSpeechSynthesis } from "@/shared/hooks/use-speech-synthesis"
+import { Volume2, VolumeX } from "lucide-react"
+import { Button } from "@/shared/components/button"
 
 interface ChatMessageProps {
   role: "user" | "agent"
@@ -15,6 +18,36 @@ export function ChatMessage({
   children,
 }: Readonly<ChatMessageProps>) {
   const isUser = role === "user"
+  const { speak, stop, isSpeaking, isSupported } = useSpeechSynthesis({
+    language: "th-TH",
+    rate: 0.9,
+    pitch: 1,
+  })
+
+  const handleSpeak = () => {
+    if (!content) return
+
+    if (isSpeaking) {
+      stop()
+      return
+    }
+
+    // Remove markdown syntax for cleaner speech
+    const cleanText = content
+      .replaceAll(/\*\*(.*?)\*\*/g, "$1") // Remove bold
+      .replaceAll(/\*(.*?)\*/g, "$1") // Remove italic
+      .replaceAll(/\[(.*?)\]\(.*?\)/g, "$1") // Remove links, keep text
+      .replaceAll(/#{1,6}\s/g, "") // Remove headers
+      .replaceAll(/```[\s\S]*?```/g, "") // Remove code blocks
+      .replaceAll(/`(.*?)`/g, "$1") // Remove inline code
+      .replaceAll(/\n{2,}/g, ". ") // Replace multiple newlines with period
+      .replaceAll(/\n/g, " ") // Replace single newlines with space
+      .trim()
+    console.log("cleanText", cleanText)
+    if (cleanText) {
+      speak(cleanText)
+    }
+  }
 
   return (
     <div
@@ -74,11 +107,28 @@ export function ChatMessage({
 
         {/* Bubble */}
         {children ? (
-          <div className='w-full flex justify-start'>{children}</div>
+          <div className='w-full flex justify-start relative group'>
+            {children}
+            {!isUser && isSupported && (
+              <Button
+                variant='ghost'
+                size='icon-sm'
+                className='absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity h-7 w-7'
+                onClick={handleSpeak}
+                title={isSpeaking ? "หยุดอ่าน" : "อ่านออกเสียง"}
+              >
+                {isSpeaking ? (
+                  <VolumeX className='h-4 w-4 text-gray-600' />
+                ) : (
+                  <Volume2 className='h-4 w-4 text-gray-600' />
+                )}
+              </Button>
+            )}
+          </div>
         ) : (
           <div
             className={cn(
-              "p-4 px-5 relative shadow-sm",
+              "p-4 px-5 relative shadow-sm group",
               type === "audio"
                 ? "rounded-2xl flex items-center gap-3 from-blue-500 to-blue-600 text-white shadow-blue-500/20"
                 : isUser
@@ -103,7 +153,26 @@ export function ChatMessage({
                 </div>
               </>
             ) : (
-              <p className='leading-relaxed text-[15px] mb-0'>{content}</p>
+              <>
+                <p className='leading-relaxed text-[15px] mb-0 pr-8'>
+                  {content}
+                </p>
+                {!isUser && isSupported && (
+                  <Button
+                    variant='ghost'
+                    size='icon-sm'
+                    className='absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity h-7 w-7'
+                    onClick={handleSpeak}
+                    title={isSpeaking ? "หยุดอ่าน" : "อ่านออกเสียง"}
+                  >
+                    {isSpeaking ? (
+                      <VolumeX className='h-4 w-4 text-gray-600' />
+                    ) : (
+                      <Volume2 className='h-4 w-4 text-gray-600' />
+                    )}
+                  </Button>
+                )}
+              </>
             )}
           </div>
         )}
